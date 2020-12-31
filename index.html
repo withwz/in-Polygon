@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="chrome=1">
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+	<link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css" type="text/css">
+	<style>
+		html,
+		body,
+		#container {
+			height: 100%
+		}
+
+		.input-item {
+			height: 2.2rem;
+		}
+
+		.btn {
+			width: 6rem;
+			margin: 0 1rem 0 2rem;
+		}
+
+		.input-text {
+			width: 4rem;
+			margin-right: 1rem;
+		}
+	</style>
+	<title>鼠标工具绘制</title>
+</head>
+
+<body>
+	<div id='container'></div>
+	<div class="input-card" style='width: 24rem;'>
+		<div class="input-item">
+			<input type="radio" name='func' checked="" value='polygon'><span class="input-text"
+				style='width:5rem;'>画多边形</span>
+			<input type="radio" name='func' value='marker'><span class="input-text">画点</span>
+		</div>
+		<div class="input-item">
+			<input id="calc" type="button" class="btn" value="判断" />
+		</div>
+	</div>
+	<script src="https://webapi.amap.com/maps?v=1.4.15&key=您申请的key值&plugin=AMap.MouseTool"></script>
+	<script type="text/javascript">
+		var map = new AMap.Map('container', {
+			zoom: 14
+		});
+		var mouseTool = new AMap.MouseTool(map);
+
+
+		var overlays = []; // 存放覆盖物
+		var makerX = 0 // 测试的点经度
+		var makerY = 0 // 测试点的纬度
+
+		mouseTool.on('draw', function (e) {
+			if (e.obj.CLASS_NAME === "AMap.Polygon") {
+				overlays.push(e.obj);
+			} else {
+				makerX = e.obj.Ce.position.Q
+				makerY = e.obj.Ce.position.R
+			}
+		})
+
+		function draw(type) {
+			switch (type) {
+				case 'marker': {
+					mouseTool.marker({
+					});
+					break;
+				}
+				case 'polygon': {
+					mouseTool.polygon({
+						fillColor: '#00b0ff',
+						strokeColor: '#80d8ff'
+					});
+					break;
+				}
+			}
+		}
+		draw('polygon')
+
+		var radios = document.getElementsByName('func');
+		for (var i = 0; i < radios.length; i += 1) {
+			radios[i].onchange = function (e) {
+				draw(e.target.value)
+			}
+		}
+	
+		document.getElementById('calc').onclick = function () {
+			let path = []
+			overlays.forEach(item => {
+				path.push(item.Ce.path)
+			})
+			// 循环判断每一个多边形
+			let flag = false
+			for (let i = 0; i < path.length; i++) {
+				const ele = path[i];
+				const lngList = ele.map(item => {
+					return item.R
+				})
+				const latList = ele.map(item => {
+					return item.Q
+				})
+				flag = calc(lngList.length, latList, lngList, makerX, makerY)
+				if(flag) break
+			}
+			if(flag) alert('在禁区')
+
+		}
+
+
+		/**
+		 * 
+		 * @param nvert 点的个数
+		 * @param vertx 纬度集合
+		 * @param verty 经度集合
+		 * @param testx 测试点的纬度
+		 * @param testy 测试点的经度
+		 */
+		function calc(nvert, vertx, verty, testx, testy) {
+			{
+				let i, j, c = false;
+				for (i = 0, j = nvert - 1; i < nvert; j = i++) { // 【 j 7、0、1、2、3、4、5、6 】， 【 i 0、1、2、3、4、5、6、7 】
+					if (
+						((verty[i] > testy) != (verty[j] > testy)) &&
+						(testx < (((vertx[j] - vertx[i]) / (verty[j] - verty[i])) * (testy - verty[i]) + vertx[i]))
+					) {
+						c = !c;
+					}
+				}
+				return c;
+			}
+		}
+
+
+
+
+	</script>
+</body>
+
+
+<!-- 
+1、被测试点是在两个相邻点的横坐标范围内
+也就是 verty[i] <testy < verty[j]
+代码表示就是
+(verty[i] > testy) != (verty[j] > testy)
+不能同时大于，那就是在测试点的上边了，也不能同时小于，那就是在测试点下边了，所以结果只能是一个true一个false；
+
+
+这句条件语句
+(testx < (((vertx[j] - vertx[i]) / (verty[j] - verty[i])) * (testy - verty[i]) + vertx[i]))
+代表交点x轴在测试点向右的射线上
+
+代表射线与多边形边界交点的x轴的位置
+(((vertx[j] - vertx[i]) / (verty[j] - verty[i])) * (testy - verty[i]) + vertx[i])
+
+斜率
+(vertx[j] - vertx[i]) / (verty[j] - verty[i])
+
+
+ -->
+
+</html>
